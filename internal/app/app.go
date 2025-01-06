@@ -12,10 +12,10 @@ type App struct {
 	server server.Server
 }
 
-func NewApp(config config.Config) *App {
-	imageCache := cache.NewCache(int(config.Cache.Size))
-	resizer := resizer.NewResizer(imageCache, config.Cache.Dir)
-	appServer := server.NewServer(config.Server, resizer)
+func New(config *config.Config) *App {
+	imageCache := cache.New(config.Cache.Size)
+	resizer := resizer.New(imageCache, config.Cache.Dir)
+	appServer := server.New(config.Server, resizer)
 
 	return &App{
 		cache:  &imageCache,

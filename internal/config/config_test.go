@@ -13,7 +13,7 @@ func TestConfig_Success(t *testing.T) {
 	os.Setenv("CACHE_DIR", "tmp")
 	os.Setenv("CACHE_SIZE", "1024")
 
-	cfg, err := NewConfig()
+	cfg, err := New()
 
 	require.NoError(t, err)
 	require.Equal(t, cfg, &Config{
@@ -34,7 +34,7 @@ func TestConfig_ParsePortErr(t *testing.T) {
 	os.Setenv("CACHE_DIR", "tmp")
 	os.Setenv("CACHE_SIZE", "1024")
 
-	cfg, err := NewConfig()
+	cfg, err := New()
 	require.Nil(t, cfg)
 	require.Error(t, err)
 }
@@ -45,13 +45,13 @@ func TestConfig_ParseCacheSizeErr(t *testing.T) {
 	os.Setenv("CACHE_DIR", "tmp")
 	os.Setenv("CACHE_SIZE", "abc")
 
-	cfg, err := NewConfig()
+	cfg, err := New()
 	require.Nil(t, cfg)
 	require.Error(t, err)
 }
 
 func TestConfig_NotSetEnvs(t *testing.T) {
-	cfg, err := NewConfig()
+	cfg, err := New()
 	require.Nil(t, cfg)
 	require.Error(t, err)
 }

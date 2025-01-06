@@ -11,24 +11,24 @@ type Config struct {
 }
 
 type CacheConfig struct {
-	Size int64
+	Size int
 	Dir  string
 }
 
 type ServerConfig struct {
-	Port int64
+	Port int
 	Host string
 }
 
-func NewConfig() (*Config, error) {
-	port, err := strconv.ParseInt(os.Getenv("PORT"), 10, 64)
+func New() (*Config, error) {
+	port, err := strconv.Atoi(os.Getenv("PORT"))
 	if err != nil {
 		return nil, err
 	}
 	host := os.Getenv("HOST")
 
 	cacheDir := os.Getenv("CACHE_DIR")
-	cacheSize, err := strconv.ParseInt(os.Getenv("CACHE_SIZE"), 10, 64)
+	cacheSize, err := strconv.Atoi(os.Getenv("CACHE_SIZE"))
 	if err != nil {
 		return nil, err
 	}

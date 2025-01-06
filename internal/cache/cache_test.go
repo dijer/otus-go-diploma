@@ -1,7 +1,8 @@
 package cache
 
 import (
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"strconv"
 	"sync"
 	"testing"
@@ -11,7 +12,7 @@ import (
 
 func TestCache(t *testing.T) {
 	t.Run("empty cache", func(t *testing.T) {
-		c := NewCache(10)
+		c := New(10)
 
 		_, ok := c.Get("aaa")
 		require.False(t, ok)
@@ -21,7 +22,7 @@ func TestCache(t *testing.T) {
 	})
 
 	t.Run("simple", func(t *testing.T) {
-		c := NewCache(5)
+		c := New(5)
 
 		wasInCache := c.Set("aaa", 100)
 		require.False(t, wasInCache)
@@ -50,7 +51,7 @@ func TestCache(t *testing.T) {
 	})
 
 	t.Run("purge logic", func(t *testing.T) {
-		c := NewCache(3)
+		c := New(3)
 		c.Set("a", 1)
 		c.Set("b", 2)
 		c.Set("c", 3)
@@ -61,7 +62,7 @@ func TestCache(t *testing.T) {
 	})
 
 	t.Run("purge logic old elements", func(t *testing.T) {
-		c := NewCache(3)
+		c := New(3)
 		c.Set("a", 1)
 		b1ok, has := c.Get("b")
 		require.False(t, has)
@@ -82,9 +83,7 @@ func TestCache(t *testing.T) {
 }
 
 func TestCacheMultithreading(t *testing.T) {
-	t.Skip() // Remove me if task with asterisk completed.
-
-	c := NewCache(10)
+	c := New(10)
 	wg := &sync.WaitGroup{}
 	wg.Add(2)
 
@@ -98,7 +97,12 @@ func TestCacheMultithreading(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for i := 0; i < 1_000_000; i++ {
-			c.Get(Key(strconv.Itoa(rand.Intn(1_000_000))))
+			n, err := rand.Int(rand.Reader, big.NewInt(1_000_000))
+			if err != nil {
+				t.Errorf("Err: %v", err)
+				return
+			}
+			c.Get(Key(strconv.Itoa(int(n.Int64()))))
 		}
 	}()
 

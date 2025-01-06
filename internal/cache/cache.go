@@ -1,5 +1,9 @@
 package cache
 
+import (
+	"sync"
+)
+
 type Key string
 
 type Cache interface {
@@ -12,6 +16,7 @@ type cache struct {
 	capacity int
 	queue    List
 	items    map[Key]*ListItem
+	mu       sync.Mutex
 }
 
 type cacheKeyValue struct {
@@ -19,7 +24,7 @@ type cacheKeyValue struct {
 	value interface{}
 }
 
-func NewCache(capacity int) Cache {
+func New(capacity int) Cache {
 	return &cache{
 		capacity: capacity,
 		queue:    NewList(),
@@ -28,6 +33,9 @@ func NewCache(capacity int) Cache {
 }
 
 func (c *cache) Set(key Key, value interface{}) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if cachedNode, ok := c.items[key]; ok {
 		cachedNode.Value = cacheKeyValue{
 			key:   key,
@@ -52,7 +60,10 @@ func (c *cache) Set(key Key, value interface{}) bool {
 	return false
 }
 
-func (c cache) Get(key Key) (interface{}, bool) {
+func (c *cache) Get(key Key) (interface{}, bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if val, ok := c.items[key]; ok {
 		c.queue.MoveToFront(c.items[key])
 		if val.Value != nil {
@@ -66,6 +77,9 @@ func (c cache) Get(key Key) (interface{}, bool) {
 }
 
 func (c *cache) Clear() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.queue = NewList()
 	c.items = make(map[Key]*ListItem, c.capacity)
 }

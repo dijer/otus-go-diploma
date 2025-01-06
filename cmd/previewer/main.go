@@ -9,18 +9,20 @@ import (
 )
 
 func main() {
-	config, err := config.NewConfig()
+	config, err := config.New()
+	if err != nil {
+		fmt.Println(err)
+
+		return
+	}
+
+	err = os.MkdirAll(config.Cache.Dir, 0o755)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	if err := os.MkdirAll(config.Cache.Dir, 0755); err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	app := app.NewApp(*config)
+	app := app.New(config)
 
 	err = app.Run()
 	if err != nil {

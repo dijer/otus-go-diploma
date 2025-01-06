@@ -5,12 +5,11 @@ WORKDIR /app
 COPY . .
 
 RUN go mod tidy
+RUN CGO_ENABLED=0 go build -o previewer ./cmd/previewer
 
-RUN go build -o previewer ./cmd/previewer
+FROM alpine:latest
 
-FROM debian:bookworm-slim
-
-RUN apt-get update && apt-get install -y ca-certificates
+RUN apk add --no-cache ca-certificates
 
 COPY --from=builder /app/previewer /usr/local/bin/previewer
 

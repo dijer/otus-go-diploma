@@ -1,130 +1,91 @@
 package resizer
 
 import (
-	"crypto/md5"
+	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
+	"image"
 	"net/http"
-	"os"
 	"path/filepath"
 
 	"github.com/dijer/otus-go-diploma/internal/cache"
-
 	"github.com/disintegration/imaging"
 )
 
 type Resizer interface {
-	ResizeImg(path string, header http.Header) (imgURL *string, isCached bool, err error)
-	LoadImg(url, dest string, headers http.Header) error
+	GetCached(hash string) (*string, bool)
+	ResizeImg(img image.Image, width, height int64, hash string) (image.Image, error)
+	LoadImg(ctx context.Context, url string, header *http.Header) (image.Image, error)
 	CreateHash(width, height int64, url string) string
 }
 
 type resizer struct {
 	cache    cache.Cache
-	cacheDir string
+	CacheDir string
 }
 
-func NewResizer(cache cache.Cache, cacheDir string) Resizer {
+func New(cache cache.Cache, cacheDir string) Resizer {
 	return &resizer{
 		cache:    cache,
-		cacheDir: cacheDir,
+		CacheDir: cacheDir,
 	}
 }
 
-func (r *resizer) ResizeImg(path string, header http.Header) (imgURL *string, isCached bool, err error) {
-	isCached = false
-
-	data, err := parseURL(path)
-	if err != nil {
-		return
-	}
-
-	width := data.Width
-	height := data.Height
-	url := data.URL
-
-	if width == 0 {
-		err = errors.New("zero width")
-		return
-	}
-
-	if height == 0 {
-		err = errors.New("zero height not allowed")
-		return
-	}
-
-	if url == "" {
-		err = errors.New("empty url not allowed")
-		return
-	}
-
-	hash := r.CreateHash(width, height, url)
-
+func (r *resizer) GetCached(hash string) (*string, bool) {
 	if val, ok := r.cache.Get(cache.Key(hash)); ok {
-		isCached = true
-		imgURL = val.(*string)
-		return
+		return val.(*string), true
 	}
 
-	filePath := filepath.Join(r.cacheDir, hash+".jpg")
-	err = r.LoadImg(url, filePath, header)
-	if err != nil {
-		return
-	}
-
-	img, err := imaging.Open(filePath)
-	if err != nil {
-		return
-	}
-
-	resizedImg := imaging.Fill(img, int(width), int(height), imaging.Center, imaging.Lanczos)
-	err = imaging.Save(resizedImg, filePath)
-	if err != nil {
-		return
-	}
-
-	r.cache.Set(cache.Key(hash), &filePath)
-	imgURL = &filePath
-	return
+	return nil, false
 }
 
-func (r *resizer) LoadImg(url, dest string, headers http.Header) error {
-	req, err := http.NewRequest("GET", "http://"+url, nil)
+func (r *resizer) ResizeImg(img image.Image, width, height int64, hash string) (image.Image, error) {
+	dest := filepath.Join(r.CacheDir, hash+".jpg")
+	resizedImg := imaging.Fill(img, int(width), int(height), imaging.Center, imaging.Lanczos)
+	r.cache.Set(cache.Key(hash), &dest)
+	err := imaging.Save(resizedImg, dest)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	for key, values := range headers {
+	return resizedImg, nil
+}
+
+func (r *resizer) LoadImg(ctx context.Context, url string, header *http.Header) (image.Image, error) {
+	request, err := http.NewRequestWithContext(ctx, "GET", "http://"+url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	for key, values := range *header {
 		for _, value := range values {
-			req.Header.Add(key, value)
+			request.Header.Add(key, value)
 		}
 	}
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := client.Do(request)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New("failed load img")
+		return nil, errors.New("failed load img")
 	}
 
-	file, err := os.Create(dest)
+	img, _, err := image.Decode(resp.Body)
 	if err != nil {
-		return errors.New(dest)
+		return nil, err
 	}
-	defer file.Close()
 
-	_, err = io.Copy(file, resp.Body)
-	return err
+	return img, nil
 }
 
 func (r *resizer) CreateHash(width, height int64, url string) string {
-	hash := md5.New()
+	hash := sha256.New()
 	hash.Write([]byte(fmt.Sprintf("%s_%d_%d", url, width, height)))
 	return hex.EncodeToString(hash.Sum(nil))
 }

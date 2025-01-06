@@ -2,28 +2,15 @@ package app
 
 import (
 	"errors"
-	"net/http"
 	"testing"
 
 	"github.com/dijer/otus-go-diploma/internal/config"
-	"github.com/stretchr/testify/mock"
+	"github.com/dijer/otus-go-diploma/internal/server"
 	"github.com/stretchr/testify/require"
 )
 
-type MockServer struct {
-	mock.Mock
-}
-
-func (m *MockServer) Start() error {
-	args := m.Called()
-	return args.Error(0)
-}
-
-func (m *MockServer) ResizerHandler(http.ResponseWriter, *http.Request) {
-}
-
 func TestNewApp_Success(t *testing.T) {
-	cfg := config.Config{
+	cfg := &config.Config{
 		Cache: config.CacheConfig{
 			Size: 1024,
 			Dir:  "tmp",
@@ -34,7 +21,7 @@ func TestNewApp_Success(t *testing.T) {
 		},
 	}
 
-	app := NewApp(cfg)
+	app := New(cfg)
 
 	require.NotNil(t, app)
 	require.NotNil(t, app.cache)
@@ -42,7 +29,7 @@ func TestNewApp_Success(t *testing.T) {
 }
 
 func TestApp_RunError(t *testing.T) {
-	cfg := config.Config{
+	cfg := &config.Config{
 		Cache: config.CacheConfig{
 			Size: 1024,
 			Dir:  "tmp",
@@ -53,10 +40,10 @@ func TestApp_RunError(t *testing.T) {
 		},
 	}
 
-	mockServer := new(MockServer)
+	mockServer := server.NewMockServer()
 	mockServer.On("Start").Return(errors.New("server err"))
 
-	app := NewApp(cfg)
+	app := New(cfg)
 	app.server = mockServer
 
 	err := app.Run()
