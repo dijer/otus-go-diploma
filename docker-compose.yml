@@ -1,0 +1,15 @@
+services:
+  previewer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./tmp:/app/tmp
+    environment:
+      - CACHE_DIR=./tmp
+      - CACHE_SIZE=10
+      - HOST=0.0.0.0
+      - PORT=8080
+
